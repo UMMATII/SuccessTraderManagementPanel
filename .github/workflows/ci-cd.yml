@@ -29,7 +29,7 @@ jobs:
       - name: Setup Node.js Runtime
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Install Project Dependencies
@@ -61,16 +61,33 @@ jobs:
       - name: Setup Node.js Runtime
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Deploy to Vercel (Preview)
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          vercel-args: '--env VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}" --env VITE_SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}"'
+      - name: Check Secrets & Deploy Preview
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::warning ::VERCEL_TOKEN secret is missing in GitHub Repository Settings. Skipping Vercel preview deployment."
+            echo "To enable automated preview deployment, add VERCEL_TOKEN, VERCEL_ORG_ID, and VERCEL_PROJECT_ID under Settings -> Secrets and variables -> Actions."
+            exit 0
+          fi
+
+          echo "Installing latest official Vercel CLI..."
+          npm install --no-save vercel@latest
+
+          echo "Pulling Vercel Environment Configuration..."
+          npx vercel pull --yes --environment=preview --token=$VERCEL_TOKEN
+
+          echo "Building project artifacts with Vercel..."
+          npx vercel build --token=$VERCEL_TOKEN
+
+          echo "Deploying preview build..."
+          npx vercel deploy --prebuilt --token=$VERCEL_TOKEN
 
   # =========================================================================
   # 3. CD JOB: Deploy to Production (Push to Main / Master)
@@ -88,13 +105,30 @@ jobs:
       - name: Setup Node.js Runtime
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
-      - name: Deploy to Vercel (Production)
-        uses: amondnet/vercel-action@v25
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod --env VITE_SUPABASE_URL="${{ secrets.VITE_SUPABASE_URL }}" --env VITE_SUPABASE_ANON_KEY="${{ secrets.VITE_SUPABASE_ANON_KEY }}"'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check Secrets & Deploy Production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error ::VERCEL_TOKEN secret is missing in GitHub Repository Settings."
+            echo "Please add VERCEL_TOKEN under Settings -> Secrets and variables -> Actions in your GitHub repository."
+            exit 1
+          fi
+
+          echo "Installing latest official Vercel CLI..."
+          npm install --no-save vercel@latest
+
+          echo "Pulling Vercel Environment Configuration..."
+          npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+
+          echo "Building production artifacts with Vercel..."
+          npx vercel build --prod --token=$VERCEL_TOKEN
+
+          echo "Deploying production build..."
+          npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
