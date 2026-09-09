@@ -63,13 +63,11 @@ jobs:
         with:
           node-version: 22
 
-      - name: Check Secrets & Deploy Preview
+      - name: Deploy Preview
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           if [ -z "$VERCEL_TOKEN" ]; then
             echo "::warning ::VERCEL_TOKEN secret is missing in GitHub Repository Settings. Skipping Vercel preview deployment."
@@ -79,23 +77,26 @@ jobs:
           echo "Installing latest official Vercel CLI..."
           npm install --no-save vercel@latest
 
+          PROJECT_ID="${VERCEL_PROJECT_ID:-prj_5dGz3iQGKBDqWkmdgGS4dWgZ7XJz}"
+          ORG_ID="${VERCEL_ORG_ID:-team_5h1r4VemqghQLJg0dyH9oDQx}"
+
           echo "Linking Vercel project configuration..."
           mkdir -p .vercel
           cat << EOF > .vercel/project.json
           {
-            "projectId": "$VERCEL_PROJECT_ID",
-            "orgId": "$VERCEL_ORG_ID"
+            "projectId": "$PROJECT_ID",
+            "orgId": "$ORG_ID"
           }
           EOF
 
-          echo "Pulling Vercel Environment Configuration..."
-          npx vercel pull --yes --environment=preview --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID
-
-          echo "Building project artifacts with Vercel..."
-          npx vercel build --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID
-
-          echo "Deploying preview build..."
-          npx vercel deploy --prebuilt --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID
+          echo "Attempting prebuilt preview deployment..."
+          if npx vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"; then
+            npx vercel build --token="$VERCEL_TOKEN"
+            npx vercel deploy --prebuilt --token="$VERCEL_TOKEN"
+          else
+            echo "Prebuilt pull failed, falling back to direct preview deploy..."
+            npx vercel deploy --token="$VERCEL_TOKEN" --yes
+          fi
 
   # =========================================================================
   # 3. CD JOB: Deploy to Production (Push to Main / Master)
@@ -115,13 +116,11 @@ jobs:
         with:
           node-version: 22
 
-      - name: Check Secrets & Deploy Production
+      - name: Deploy Production
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           if [ -z "$VERCEL_TOKEN" ]; then
             echo "::error ::VERCEL_TOKEN secret is missing in GitHub Repository Settings."
@@ -131,20 +130,23 @@ jobs:
           echo "Installing latest official Vercel CLI..."
           npm install --no-save vercel@latest
 
+          PROJECT_ID="${VERCEL_PROJECT_ID:-prj_5dGz3iQGKBDqWkmdgGS4dWgZ7XJz}"
+          ORG_ID="${VERCEL_ORG_ID:-team_5h1r4VemqghQLJg0dyH9oDQx}"
+
           echo "Linking Vercel project configuration..."
           mkdir -p .vercel
           cat << EOF > .vercel/project.json
           {
-            "projectId": "$VERCEL_PROJECT_ID",
-            "orgId": "$VERCEL_ORG_ID"
+            "projectId": "$PROJECT_ID",
+            "orgId": "$ORG_ID"
           }
           EOF
 
-          echo "Pulling Vercel Environment Configuration..."
-          npx vercel pull --yes --environment=production --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID
-
-          echo "Building production artifacts with Vercel..."
-          npx vercel build --prod --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID
-
-          echo "Deploying production build..."
-          npx vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID
+          echo "Attempting prebuilt production deployment..."
+          if npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"; then
+            npx vercel build --prod --token="$VERCEL_TOKEN"
+            npx vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+          else
+            echo "Prebuilt pull failed, falling back to direct production deploy..."
+            npx vercel deploy --prod --token="$VERCEL_TOKEN" --yes
+          fi
