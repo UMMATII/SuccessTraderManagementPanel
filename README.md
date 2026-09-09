@@ -126,3 +126,20 @@ Open your browser at `http://localhost:5173`.
 
 > [!TIP]
 > **Built-in Quick Role Switcher**: If you haven't linked your live Supabase database yet, you can preview all features immediately using the **Owner Mode** and **Employee Mode** buttons on the login screen or in the top guidance banner.
+
+---
+
+## 🚢 CI / CD & Vercel Deployment
+
+The repository includes a ready-to-use continuous integration and continuous deployment pipeline using **GitHub Actions** and **Vercel**:
+- [`vercel.json`](file:///e:/Ummatii/vercel.json): Configures client-side SPA route rewrites to `/index.html` and security response headers.
+- [`.github/workflows/ci-cd.yml`](file:///e:/Ummatii/.github/workflows/ci-cd.yml): Automated workflow that checks linting, verifies TypeScript builds, creates Preview deployments on Pull Requests, and automatically deploys to Production on pushes to `main`.
+
+### Required GitHub Repository Secrets
+To enable automated deployments, add these secrets in **GitHub Repository Settings -> Secrets and variables -> Actions**:
+1. `VERCEL_TOKEN`: Your Vercel Personal Access Token ([Vercel Account Settings -> Tokens](https://vercel.com/account/tokens)).
+2. `VERCEL_ORG_ID`: Your Vercel Team/User ID (found in `.vercel/project.json` or team settings).
+3. `VERCEL_PROJECT_ID`: Your Vercel Project ID (found in Project Settings -> General).
+4. `VITE_SUPABASE_URL`: Your Supabase Project URL.
+5. `VITE_SUPABASE_ANON_KEY`: Your Supabase Anon Public Key.
+
