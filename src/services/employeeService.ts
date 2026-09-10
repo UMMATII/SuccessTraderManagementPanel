@@ -1,4 +1,6 @@
+import { createClient } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import type { Database } from '@/types/database.types';
 import type { Profile, ProfileWithStats } from '@/types/models';
 import type { CreateEmployeeFormData, EditEmployeeFormData } from '@/types/forms';
 import { auditLogService } from './auditLogService';
@@ -122,13 +124,24 @@ export const employeeService = {
   },
 
   /**
-   * Create an employee account.
-   * Uses Supabase signUp with metadata (which triggers handle_new_user)
-   * or upserts profile in public.profiles.
+   * Create an employee account without modifying or replacing the Admin's session.
+   * Uses an isolated, in-memory Supabase client (persistSession: false, no storage)
+   * so that the newly created Employee credentials never touch localStorage or trigger
+   * onAuthStateChange on the main Admin client.
+   * Requires NO service role key.
    */
   async createEmployee(payload: CreateEmployeeFormData): Promise<{ success: boolean; error: string | null }> {
     try {
-      // 1. Check if employee_id already taken
+      // 1. Verify current Admin session exists
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.user) {
+        return {
+          success: false,
+          error: 'Administrator authentication required. Please sign in again.',
+        };
+      }
+
+      // 2. Check if employee_id is already assigned
       const { data: existingEmp } = await supabase
         .from('profiles')
         .select('id')
@@ -136,11 +149,32 @@ export const employeeService = {
         .maybeSingle();
 
       if (existingEmp) {
-        return { success: false, error: `Employee ID "${payload.employee_id}" is already assigned.` };
+        return {
+          success: false,
+          error: `Employee ID "${payload.employee_id}" is already assigned.`,
+        };
       }
 
-      // 2. Sign up the user with Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      // 3. Create an isolated in-memory client using public anon key (NO service role key needed)
+      // persistSession: false and no-op storage ensures the Admin's session is never touched!
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+      const isolatedClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          persistSession: false,
+          autoRefreshToken: false,
+          detectSessionInUrl: false,
+          storage: {
+            getItem: () => null,
+            setItem: () => {},
+            removeItem: () => {},
+          },
+        },
+      });
+
+      // 4. Register the new employee account via isolated client
+      const { data: authData, error: authError } = await isolatedClient.auth.signUp({
         email: payload.email,
         password: payload.temporaryPassword,
         options: {
@@ -153,10 +187,16 @@ export const employeeService = {
         },
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        const errMsg = authError.message || '';
+        if (errMsg.toLowerCase().includes('already') || errMsg.toLowerCase().includes('registered')) {
+          return { success: false, error: 'An account with this email already exists.' };
+        }
+        return { success: false, error: authError.message };
+      }
 
       if (authData.user) {
-        // Ensure profile row exists with accurate status and joining_date
+        // 5. Ensure profile row exists via the authenticated Admin client
         const { error: profileError } = await supabase
           .from('profiles')
           .upsert({
@@ -172,6 +212,7 @@ export const employeeService = {
           console.warn('Profile upsert note:', profileError.message);
         }
 
+        // 6. Record audit log under Admin's account
         await auditLogService.logAction({
           action: 'CREATE_EMPLOYEE',
           entityType: 'profiles',
@@ -185,6 +226,7 @@ export const employeeService = {
         });
       }
 
+      // Admin's browser session in the main client is completely preserved
       return { success: true, error: null };
     } catch (err: any) {
       return { success: false, error: err.message || 'Failed to create employee' };
