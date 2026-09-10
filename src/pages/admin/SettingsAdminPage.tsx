@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
+import { AvatarUpload } from '@/components/ui/AvatarUpload';
 import { Settings, ShieldCheck, Database, CheckCircle, AlertTriangle, Key, User } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -125,11 +126,13 @@ export function SettingsAdminPage() {
               />
             </div>
 
-            <Input
-              label="Avatar Image URL (Optional)"
-              placeholder="https://images.unsplash.com/..."
+            <AvatarUpload
+              label="Owner Profile Photo"
+              name={profile?.name || 'Owner'}
+              userId={profile?.id}
               value={avatarUrl}
-              onChange={(e) => setAvatarUrl(e.target.value)}
+              onChange={(url) => setAvatarUrl(url)}
+              size="lg"
             />
 
             <div className="flex justify-end pt-2">

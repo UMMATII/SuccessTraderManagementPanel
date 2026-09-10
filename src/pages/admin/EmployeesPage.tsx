@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Dialog } from '@/components/ui/Dialog';
 import { StatusBadge } from '@/components/ui/Badge';
+import { AvatarUpload } from '@/components/ui/AvatarUpload';
 import {
   Table,
   TableHeader,
@@ -76,6 +77,7 @@ export function EmployeesPage() {
     handleSubmit: handleEditSubmit,
     reset: resetEdit,
     setValue: setEditValue,
+    watch: watchEdit,
     formState: { errors: editErrors },
   } = useForm<EditEmployeeFormData>({
     resolver: zodResolver(editEmployeeSchema),
@@ -426,11 +428,13 @@ export function EmployeesPage() {
             />
           </div>
 
-          <Input
-            label="Avatar Image URL (Optional)"
-            placeholder="https://..."
-            error={editErrors.avatar_url?.message}
-            {...registerEdit('avatar_url')}
+          <AvatarUpload
+            label="Trader Profile Photo"
+            name={selectedEmployee?.name || 'Trader'}
+            userId={selectedEmployee?.id}
+            value={watchEdit('avatar_url')}
+            onChange={(url) => setEditValue('avatar_url', url, { shouldValidate: true })}
+            size="md"
           />
 
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">

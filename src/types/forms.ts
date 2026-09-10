@@ -38,7 +38,7 @@ export const editEmployeeSchema = z.object({
   name: z.string().min(2, 'Full name is required'),
   joining_date: z.string().optional().nullable(),
   status: z.enum(['ACTIVE', 'INACTIVE']),
-  avatar_url: z.string().url('Must be a valid URL').optional().or(z.literal('')),
+  avatar_url: z.string().optional().nullable().or(z.literal('')),
 });
 
 export type EditEmployeeFormData = z.infer<typeof editEmployeeSchema>;

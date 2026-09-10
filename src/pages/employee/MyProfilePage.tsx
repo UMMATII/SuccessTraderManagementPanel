@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/com
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { StatusBadge } from '@/components/ui/Badge';
+import { AvatarUpload } from '@/components/ui/AvatarUpload';
 import { formatDate } from '@/lib/date-utils';
 import { User, Shield, Lock, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -83,11 +84,13 @@ export function MyProfilePage() {
             onChange={(e) => setName(e.target.value)}
           />
 
-          <Input
-            label="Avatar Image URL"
-            placeholder="https://..."
+          <AvatarUpload
+            label="Profile Photo"
+            name={profile.name}
+            userId={profile.id}
             value={avatarUrl}
-            onChange={(e) => setAvatarUrl(e.target.value)}
+            onChange={(url) => setAvatarUrl(url)}
+            size="lg"
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

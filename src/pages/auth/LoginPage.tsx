@@ -4,21 +4,19 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { loginSchema, type LoginFormData } from '@/types/forms';
 import { useAuthStore } from '@/store/authStore';
-import { isSupabaseConfigured } from '@/lib/supabase';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
-import { ShieldCheck, Lock, Mail, ArrowRight, UserCheck, Key } from 'lucide-react';
+import { ShieldCheck, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { signIn, setDemoProfile, error, clearError } = useAuthStore();
+  const { signIn, error, clearError } = useAuthStore();
   const [submitting, setSubmitting] = useState(false);
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -44,42 +42,6 @@ export function LoginPage() {
       }
     } else {
       toast.error('Authentication failed. Check your email and password.');
-    }
-  };
-
-  const handleDemoLogin = async (demoRole: 'OWNER' | 'EMPLOYEE') => {
-    const demoEmail = demoRole === 'OWNER' ? 'owner@successtraders.com' : 'emp-101@successtraders.com';
-    const demoPassword = 'Password123!';
-
-    setValue('email', demoEmail);
-    setValue('password', demoPassword);
-
-    // If Supabase is configured, attempt real authentication first
-    if (isSupabaseConfigured()) {
-      clearError();
-      setSubmitting(true);
-      const success = await signIn(demoEmail, demoPassword);
-      setSubmitting(false);
-
-      if (success) {
-        toast.success(`Signed in as ${demoRole} with active Supabase session!`);
-        const currentRole = useAuthStore.getState().role;
-        if (currentRole === 'OWNER') {
-          navigate('/admin/dashboard');
-        } else {
-          navigate('/employee/dashboard');
-        }
-        return;
-      }
-    }
-
-    // Fallback to client demo profile
-    setDemoProfile(demoRole);
-    toast.info(`Switched to ${demoRole} preview mode`);
-    if (demoRole === 'OWNER') {
-      navigate('/admin/dashboard');
-    } else {
-      navigate('/employee/dashboard');
     }
   };
 
@@ -155,40 +117,6 @@ export function LoginPage() {
               <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </form>
-
-          {/* Quick Sign-in Credentials */}
-          <div className="mt-8 pt-6 border-t border-slate-800">
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center mb-3">
-              One-Click Sign In (Seed Accounts)
-            </p>
-            <div className="grid grid-cols-2 gap-2.5">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => handleDemoLogin('OWNER')}
-                className="text-xs border-emerald-500/30 hover:border-emerald-500/60"
-                disabled={submitting}
-              >
-                <ShieldCheck className="w-3.5 h-3.5 mr-1.5 text-emerald-400" />
-                Owner Account
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => handleDemoLogin('EMPLOYEE')}
-                className="text-xs border-sky-500/30 hover:border-sky-500/60"
-                disabled={submitting}
-              >
-                <UserCheck className="w-3.5 h-3.5 mr-1.5 text-sky-400" />
-                Trader Account
-              </Button>
-            </div>
-            <p className="text-[10px] text-slate-500 text-center mt-2">
-              Default: <code className="text-slate-400">owner@successtraders.com</code> • Password: <code className="text-slate-400">Password123!</code>
-            </p>
-          </div>
         </div>
       </div>
     </div>
